@@ -1,0 +1,11 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace GeometricFigures.Entities;
+
+public class Figure
+{
+    [Key] public int Id { get; set; }
+    [Required] public string Name { get; set; }
+    [Required] public double Area { get; set; }
+    [Required] public double Perimeter { get; set; }
+}
