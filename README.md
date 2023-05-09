@@ -11,3 +11,9 @@
 
 - Run `cd backend/GeometricFigures/GeometricFigures`;
 - Run `dotnet run`.
+
+## Front-end
+
+- Run `cd frontend/geometric-figures`;
+- Run `npm install`;
+- Run `ng serve`;
