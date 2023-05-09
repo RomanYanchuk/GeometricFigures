@@ -5,6 +5,7 @@ using GeometricFigures.Exceptions;
 using GeometricFigures.Storages;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
+using System.Linq.Expressions;
 
 namespace GeometricFigures.Services;
 
@@ -39,16 +40,17 @@ public class FiguresService : IFiguresService
         await _storage.SaveChangesAsync();
     }
 
-    public async Task<List<FigureContract>> Get(string sortField = nameof(Figure.Id), bool isAscending = true, int pageSize = 5, int pageNumber = 1, string? searchText = null)
+    public async Task<FiguresResponse> Get(string sortField = nameof(Figure.Id), bool isAscending = true, int pageSize = 5, int pageNumber = 1, string? searchText = null)
     {
         var query = _storage.Figures.AsQueryable();
 
-        if (!string.IsNullOrEmpty(searchText))
+        if (!string.IsNullOrWhiteSpace(searchText))
         {
+            searchText = searchText.ToLower();
             query = query.Where(x =>
-                    x.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                    x.Area.ToString(CultureInfo.InvariantCulture).Contains(searchText) ||
-                    x.Perimeter.ToString(CultureInfo.InvariantCulture).Contains(searchText)
+                    x.Name.ToLower().Contains(searchText) ||
+                    x.Area.ToString().Contains(searchText) ||
+                    x.Perimeter.ToString().Contains(searchText)
             );
         }
 
@@ -57,13 +59,29 @@ public class FiguresService : IFiguresService
             var property = typeof(Figure).GetProperty(sortField, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
             if (property != null)
             {
-                query = isAscending ? query.OrderBy(x => property.GetValue(x)) : query.OrderByDescending(x => property.GetValue(x));
+                var parameter = Expression.Parameter(typeof(Figure), "x");
+                var propertyField = Expression.Property(parameter, property);
+                var convert = Expression.Convert(propertyField, typeof(object));
+                var lambda = Expression.Lambda<Func<Figure, object>>(convert, parameter);
+                query = isAscending ? query.OrderBy(lambda) : query.OrderByDescending(lambda);
             }
         }
 
-
+        var numberOfItems = await query.CountAsync();
         query = query.Skip((pageNumber - 1) * pageSize).Take(pageSize);
-        return (await query.ToListAsync()).Select(_contractReconstructionFactory.Create).ToList();
+        var items = (await query.ToListAsync()).Select(_contractReconstructionFactory.Create).ToList();
+        return new FiguresResponse { Figures = items, TotalFigures = numberOfItems };
+    }
+
+    public async Task<FigureContract> Get(int figureId)
+    {
+        var figure = await _storage.Figures.FirstOrDefaultAsync(f => f.Id == figureId);
+        if (figure == null)
+        {
+            throw new FigureNotFoundException(figureId);
+        }
+
+        return _contractReconstructionFactory.Create(figure);
     }
 
     public async Task Delete(int figureId)

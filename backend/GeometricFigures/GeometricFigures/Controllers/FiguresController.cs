@@ -30,12 +30,17 @@ namespace GeometricFigures.Controllers
         }
 
         [HttpGet]
-        public async Task<List<FigureContract>> Get(string sortField = nameof(Figure.Id), bool isAscending = true,
+        public async Task<FiguresResponse> Get(string sortField = nameof(Figure.Id), bool isAscending = true,
             int pageSize = 5, int pageNumber = 1, string? searchText = null)
         {
             return await _figuresService.Get(sortField, isAscending, pageSize, pageNumber, searchText);
         }
 
+        [HttpGet("{id:int}")]
+        public async Task<FigureContract> Get(int id)
+        {
+            return await _figuresService.Get(id);
+        }
 
         [HttpDelete("{id:int}")]
         public async Task Delete(int id)
